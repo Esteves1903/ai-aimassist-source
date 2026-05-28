@@ -577,6 +577,11 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                         if (var::no_recoil)
                         {
                             ImGui::SliderFloat("Recoil Strength", &var::recoil_strength, 0.5f, 10.0f, "%.1f", 0);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                                ImGui::SetTooltip("Compensacao vertical — aumenta ate os tiros subirem");
+                            ImGui::SliderFloat("Recoil X",        &var::recoil_x,        -5.0f,  5.0f, "%.2f", 0);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                                ImGui::SetTooltip("Desvio horizontal: negativo = esquerda, positivo = direita");
                         }
                         ImGui::Checkbox("Triggerbot", &var::triggerbot);
                         if (var::triggerbot)

@@ -45,20 +45,46 @@ void aimbot::no_recoil()
 {
     if (!var::no_recoil) return;
 
-    static double accumulator = 0.0;
+    const bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 
-    if (!(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
+    static double acc_y   = 0.0;
+    static double acc_x   = 0.0;
+    static DWORD  fire_t  = 0;
+    static bool   was_lmb = false;
+
+    if (!lmb)
     {
-        accumulator = 0.0;
+        acc_y = acc_x = 0.0;
+        was_lmb = false;
         return;
     }
 
-    accumulator += var::recoil_strength;
-    const int move = static_cast<int>(accumulator);
-    if (move > 0)
+    if (!was_lmb)
     {
-        mouse.move(0, move);
-        accumulator -= move;
+        fire_t  = GetTickCount();
+        was_lmb = true;
+    }
+
+    const DWORD elapsed = GetTickCount() - fire_t;
+
+    // primeiro tiro nao tem recoil — ignora primeiros 60ms
+    if (elapsed < 60) return;
+
+    // recoil sobe gradualmente nos primeiros ~300ms depois estabiliza
+    const double t    = (double)(elapsed - 60) / 300.0;
+    const double ramp = t < 1.0 ? (0.5 + 0.5 * t) : 1.0;
+
+    acc_y += var::recoil_strength * ramp;
+    acc_x += var::recoil_x        * ramp;
+
+    const int move_y = static_cast<int>(acc_y);
+    const int move_x = static_cast<int>(acc_x);
+
+    if (move_y != 0 || move_x != 0)
+    {
+        mouse.move(move_x, move_y);
+        acc_y -= move_y;
+        acc_x -= move_x;
     }
 }
 
@@ -80,7 +106,8 @@ void aimbot::aim_to(int x, int y, int box_w, int box_h)
     static DWORD  last_t = 0;
 
     const DWORD now = GetTickCount();
-    if (now - last_t > 150)
+    const double jump = sqrt((double)((x_off - prev_x) * (x_off - prev_x) + (y_off - prev_y) * (y_off - prev_y)));
+    if (now - last_t > 150 || jump > 120.0)
     {
         x_acc = y_acc = frac_x = frac_y = vel_x = vel_y = 0.0;
         prev_x = x_off;
@@ -88,7 +115,7 @@ void aimbot::aim_to(int x, int y, int box_w, int box_h)
     }
     last_t = now;
 
-    // velocity (responsive EMA)
+    // velocity EMA
     vel_x = 0.5 * vel_x + 0.5 * (x_off - prev_x);
     vel_y = 0.5 * vel_y + 0.5 * (y_off - prev_y);
     prev_x = x_off;
@@ -102,20 +129,30 @@ void aimbot::aim_to(int x, int y, int box_w, int box_h)
     }
 
     const double dist = sqrt((double)(x_off * x_off + y_off * y_off));
-    const double lead = var::sticky_aim ? 0.65 : 0.40;
     const double spd  = (var::smooth > 0.1 ? var::smooth : 0.1) / 8.0
                         / (var::sensitivity > 0.01f ? (double)var::sensitivity : 0.01);
+
+    // velocity prediction only when target is genuinely moving (> 4px/frame)
+    // suppresses YOLO bounding-box jitter being mistaken for real movement
+    const double vel_mag = sqrt(vel_x * vel_x + vel_y * vel_y);
+    const double lead    = (vel_mag > 4.0) ? (var::sticky_aim ? 0.65 : 0.40) : 0.0;
 
     const double raw_x = (x_off + vel_x * lead) / spd;
     const double raw_y = (y_off + vel_y * lead) / spd;
 
-    // single clean EMA (no dynamic_smooth complexity)
-    x_acc = var::smoothing_factor * x_acc + (1.0 - var::smoothing_factor) * raw_x;
-    y_acc = var::smoothing_factor * y_acc + (1.0 - var::smoothing_factor) * raw_y;
+    // durante spray com no_recoil ativo: EMA mais responsiva e cap maior
+    // permite corrigir recoil residual frame a frame sem atraso
+    const bool spray_mode = var::no_recoil && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+    const double ema = spray_mode
+        ? std::max(0.0, (double)var::smoothing_factor - 0.15)
+        : (double)var::smoothing_factor;
 
-    // overshoot prevention — cap step to 95% of remaining distance
+    x_acc = ema * x_acc + (1.0 - ema) * raw_x;
+    y_acc = ema * y_acc + (1.0 - ema) * raw_y;
+
+    // overshoot prevention — cap maior durante spray para snap mais rápido
     const double step = sqrt(x_acc * x_acc + y_acc * y_acc);
-    const double cap  = dist * 0.95;
+    const double cap  = dist * (spray_mode ? 0.97 : 0.95);
     if (step > cap && step > 0.01)
     {
         const double s = cap / step;

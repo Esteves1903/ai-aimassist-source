@@ -85,6 +85,7 @@ namespace var {
     inline bool aim_active = false;
     inline bool no_recoil = false;
     inline float recoil_strength = 2.5f;
+    inline float recoil_x = 0.0f;
     inline bool triggerbot = false;
     inline float trigger_fov = 8.0f;
     inline int  trigger_key = VK_RBUTTON;

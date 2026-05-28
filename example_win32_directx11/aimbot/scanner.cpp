@@ -208,7 +208,7 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
         var::screen_box_h = (int)(box.height * esp_scale);
 
         if (!IsCursorVisible() && var::aim_active)
-            aimbot::aim_to(var::boxX, var::boxY, var::Width, var::Height + 10);
+            aimbot::aim_to(var::boxX, var::boxY, var::Width, var::Height);
     }
     else
     {
