@@ -86,10 +86,14 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
                 const int height  = static_cast<int>(data[3] * frame.rows);
 
                 // reject boxes too small to be a real player
-                if (height < 12) continue;
+                if (height < 20) continue;
 
                 // reject wide flat boxes — walls/floors, not people
                 if (height < width * 0.55f) continue;
+
+                // reject detections entirely in the top of the frame (sky/ceiling)
+                // bottom of box must be below top 20% of frame
+                if (centerY + height / 2 < (int)(frame.rows * 0.20f)) continue;
 
                 const int left = centerX - width / 2;
                 const int top  = centerY - height / 2;
