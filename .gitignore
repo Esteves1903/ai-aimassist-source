@@ -1,0 +1,27 @@
+# Build output
+Debug/
+Release/
+x64/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.exe
+*.dll
+
+# Credentials — NEVER commit this file
+example_win32_directx11/auth/credentials.h
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.aps
+ipch/
+*.opensdf
+*.sdf
+
+# Other
+Thumbs.db
+*.log
