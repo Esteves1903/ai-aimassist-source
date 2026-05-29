@@ -106,63 +106,53 @@ void aimbot::aim_to(int x, int y, int box_w, int box_h)
     const int screen_width  = GetSystemMetrics(SM_CXSCREEN);
     const int screen_height = GetSystemMetrics(SM_CYSCREEN);
 
+    // posição do alvo em coordenadas de ecrã
     x = screen_width  / 2 - ACTIVATION_RANGE / 2 + x + box_w / 2;
     y = screen_height / 2 - ACTIVATION_RANGE / 2 + y + (int)(box_h * (1.0f - var::aim_height / 100.0f));
 
+    // offset do crosshair (centro do ecrã) ao alvo
     const int x_off = x - screen_width  / 2;
     const int y_off = y - screen_height / 2;
 
-    static double frac_x = 0.0, frac_y = 0.0;
-    static double vel_x  = 0.0, vel_y  = 0.0;
-    static int    prev_x = 0,   prev_y = 0;
-    static DWORD  last_t = 0;
+    // deadzone — não mecher quando já está no alvo
+    if (abs(x_off) <= 2 && abs(y_off) <= 2) return;
 
-    const DWORD now = GetTickCount();
-    if (now - last_t > 250)
-    {
-        frac_x = frac_y = vel_x = vel_y = 0.0;
-        prev_x = x_off;
-        prev_y = y_off;
-    }
-    last_t = now;
+    // velocidade do alvo (para leading)
+    static int   prev_x = 0, prev_y = 0;
+    static double vel_x = 0, vel_y = 0;
+    vel_x = vel_x * 0.6 + (x_off - prev_x) * 0.4;
+    vel_y = vel_y * 0.6 + (y_off - prev_y) * 0.4;
+    prev_x = x_off; prev_y = y_off;
 
-    vel_x = 0.7 * vel_x + 0.3 * (x_off - prev_x);
-    vel_y = 0.7 * vel_y + 0.3 * (y_off - prev_y);
-    prev_x = x_off;
-    prev_y = y_off;
+    // quanto mover: sensitivity calibra a velocidade do rato em relação ao jogo
+    // smooth controla o quanto fecha por frame (1 = tudo de uma vez, 100 = lento)
+    const double s   = (var::sensitivity > 0.01 ? (double)var::sensitivity : 0.01);
+    const double sm  = (var::smooth > 0.1 ? (double)var::smooth : 0.1);
+    const double spd = sm / (s * 15.0);  // divisor: sm=10,s=2 → spd=0.33 → move 3x o offset
 
-    if (abs(x_off) <= 2 && abs(y_off) <= 2)
-    {
-        frac_x = frac_y = 0.0;
-        return;
-    }
+    const double lead = var::sticky_aim ? 0.2 : 0.15;
+    double dx = (x_off + vel_x * lead) / spd;
+    double dy = (y_off + vel_y * lead) / spd;
 
-    // fração da distância fechada por frame
-    // smooth=10,sens=2.0 → frac~1.0 (snap instantâneo)
-    // smooth=30,sens=1.0 → frac~0.47 (rápido mas suave)
-    // smooth=80,sens=1.0 → frac~0.18 (humano lento)
-    const double raw_frac = (var::sensitivity > 0.01 ? (double)var::sensitivity : 0.01)
-                          / (var::smooth > 0.1 ? (double)var::smooth : 0.1) * 14.0;
-    const double frac = raw_frac > 0.99 ? 0.99 : raw_frac;
+    // cap: nunca passar do alvo
+    const double dist = sqrt((double)(x_off*x_off + y_off*y_off));
+    const double step = sqrt(dx*dx + dy*dy);
+    if (step > dist && step > 0.01) { dx *= dist/step; dy *= dist/step; }
 
-    const double lead  = var::sticky_aim ? 0.25 : 0.18;
-    double move_x = (x_off + vel_x * lead) * frac;
-    double move_y = (y_off + vel_y * lead) * frac;
-
+    // micro-variação natural
     if (var::natural_aim)
     {
         static const DWORD t0 = GetTickCount();
         const double t = (GetTickCount() - t0) / 1000.0;
-        move_x += sin(t * 7.3 + 1.1) * 0.22;
-        move_y += sin(t * 6.1 + 2.7) * 0.22;
+        dx += sin(t * 7.3 + 1.1) * 0.2;
+        dy += sin(t * 6.1 + 2.7) * 0.2;
     }
 
-    frac_x += move_x;
-    frac_y += move_y;
-    const int mx = static_cast<int>(frac_x);
-    const int my = static_cast<int>(frac_y);
-    frac_x -= mx;
-    frac_y -= my;
+    // sub-pixel accumulator
+    static double fx = 0.0, fy = 0.0;
+    fx += dx; fy += dy;
+    const int mx = (int)fx; const int my = (int)fy;
+    fx -= mx; fy -= my;
 
     if (mx != 0 || my != 0)
         mouse.move(mx, my);

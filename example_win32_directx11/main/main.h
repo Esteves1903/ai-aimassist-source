@@ -77,7 +77,7 @@ namespace var {
     inline bool  esp = true;
     inline int   scannFPS = 60;
     // --- Type 95 optimized defaults ---
-    inline float smooth = 10.0f;           // frac=2.8→cap 0.99 = snap instantaneo
+    inline float smooth = 10.0f;           // sm=10,s=2 → spd=0.33 → move 3x offset = snap
     inline float aim_height = 92.0f;
     inline int   key0 = 0;
     inline int   key4 = VK_INSERT;

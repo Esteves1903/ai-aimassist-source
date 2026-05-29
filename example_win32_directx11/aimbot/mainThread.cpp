@@ -40,58 +40,44 @@ static DWORD WINAPI RunningThread(LPVOID)
     }
 
     DWORD last_frame = 0;
-    DWORD last_aim   = 0;
 
     while (true)
     {
         thread1::POC();
 
         const DWORD now = GetTickCount();
-
-        // key state update + no_recoil + high-frequency aim (every 4ms = 250Hz)
-        if (now - last_aim >= 4)
-        {
-            last_aim = now;
-
-            aimbot::no_recoil();
-
-            {
-                static bool key_was_down = false;
-                static bool aim_toggled  = false;
-                const bool key_down = (GetAsyncKeyState(var::key0) & 0x8000) || (var::LTrigger && var::checkbox);
-                const bool manual_lmb = var::anti_spray && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) && !var::triggerbot_firing;
-
-                if (var::aim_toggle)
-                {
-                    if (key_down && !key_was_down)
-                        aim_toggled = !aim_toggled;
-                    var::aim_active = aim_toggled && !manual_lmb;
-                }
-                else
-                {
-                    var::aim_active = key_down && !manual_lmb;
-                }
-                key_was_down = key_down;
-            }
-
-            // aim update using last known YOLO position — runs at 250Hz
-            if (var::aim_active && var::screen_box_w > 0)
-                aimbot::aim_to(var::boxX, var::boxY, var::Width, var::Height);
-        }
-
-        // YOLO scan at configured FPS
         const DWORD interval = 1000 / (var::scannFPS > 0 ? var::scannFPS : 60);
-        if (now - last_frame >= interval)
-        {
-            last_frame = now;
-            image = screen.get();
-            detect.start(image); // updates var::boxX/Y and calls aim_to once more
-            cv::waitKey(1);
-        }
-        else
+        if (now - last_frame < interval)
         {
             Sleep(1);
+            continue;
         }
+        last_frame = now;
+
+        aimbot::no_recoil();
+
+        {
+            static bool key_was_down = false;
+            static bool aim_toggled  = false;
+            const bool key_down = (GetAsyncKeyState(var::key0) & 0x8000) || (var::LTrigger && var::checkbox);
+            const bool manual_lmb = var::anti_spray && (GetAsyncKeyState(VK_LBUTTON) & 0x8000) && !var::triggerbot_firing;
+
+            if (var::aim_toggle)
+            {
+                if (key_down && !key_was_down)
+                    aim_toggled = !aim_toggled;
+                var::aim_active = aim_toggled && !manual_lmb;
+            }
+            else
+            {
+                var::aim_active = key_down && !manual_lmb;
+            }
+            key_was_down = key_down;
+        }
+
+        image = screen.get();
+        detect.start(image);
+        cv::waitKey(1);
     }
 
     return 0;
