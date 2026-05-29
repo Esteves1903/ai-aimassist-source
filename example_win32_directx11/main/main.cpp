@@ -625,29 +625,84 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                         
                         ImVec2 pos = ImGui::GetWindowPos();
                         ImDrawList* draw = ImGui::GetWindowDrawList();
-                        draw->AddImageRounded(dr, ImVec2(pos.x - 110.0f, pos.y + 80.0f), ImVec2(pos.x + 410.0f, pos.y + 580.0f), ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f), ImColor(255, 255, 255, 255), 10.0f);
 
-                        // aim height indicator — shows exact target position on the body
+                        // --- Soldado FPS desenhado com ImGui ---
                         {
-                            const float img_top    = pos.y + 80.0f;
-                            const float img_bottom = pos.y + 580.0f;
-                            const float img_left   = pos.x - 110.0f;
-                            const float img_right  = pos.x + 410.0f;
+                            const float cx  = pos.x + 150.0f;
+                            const float ct2 = pos.y + 85.0f;
+                            const float ch  = 480.0f;
+
+                            // fundo / sombra
+                            draw->AddRectFilled(ImVec2(cx - 70, ct2), ImVec2(cx + 70, ct2 + ch), ImColor(20, 22, 28, 200), 8.0f);
+
+                            // capacete
+                            const float hr = ch * 0.072f;
+                            const float hcy = ct2 + hr + 2.0f;
+                            draw->AddRectFilled(ImVec2(cx - hr * 1.1f, ct2), ImVec2(cx + hr * 1.1f, hcy - hr * 0.3f), ImColor(45, 55, 35, 255), 4.0f);
+                            // viseira
+                            draw->AddRectFilled(ImVec2(cx - hr * 0.9f, hcy - hr * 0.6f), ImVec2(cx + hr * 0.9f, hcy - hr * 0.1f), ImColor(30, 35, 25, 255));
+                            // cara
+                            draw->AddCircleFilled(ImVec2(cx, hcy), hr, ImColor(195, 165, 130, 255));
+                            draw->AddCircle(ImVec2(cx, hcy), hr, ImColor(60, 50, 40, 180), 32, 1.2f);
+
+                            // pescoço
+                            const float neck_t = hcy + hr;
+                            const float neck_b = neck_t + ch * 0.025f;
+                            draw->AddRectFilled(ImVec2(cx - hr * 0.35f, neck_t), ImVec2(cx + hr * 0.35f, neck_b), ImColor(195, 165, 130, 220));
+
+                            // corpo / colete
+                            const float body_t  = neck_b;
+                            const float body_b  = ct2 + ch * 0.58f;
+                            const float body_hw = ch * 0.13f;
+                            draw->AddRectFilled(ImVec2(cx - body_hw, body_t), ImVec2(cx + body_hw, body_b), ImColor(55, 70, 40, 255), 5.0f);
+                            // detalhe colete
+                            draw->AddLine(ImVec2(cx, body_t + 4), ImVec2(cx, body_b - 4), ImColor(40, 50, 28, 180), 1.5f);
+                            draw->AddLine(ImVec2(cx - body_hw + 4, body_t + ch*0.08f), ImVec2(cx + body_hw - 4, body_t + ch*0.08f), ImColor(40, 50, 28, 150), 1.0f);
+
+                            // braços
+                            const float arm_w  = ch * 0.055f;
+                            const float arm_t  = body_t + ch * 0.01f;
+                            const float arm_b  = body_t + ch * 0.28f;
+                            draw->AddRectFilled(ImVec2(cx - body_hw - arm_w, arm_t), ImVec2(cx - body_hw, arm_b), ImColor(55, 70, 40, 240), 3.0f);
+                            draw->AddRectFilled(ImVec2(cx + body_hw, arm_t), ImVec2(cx + body_hw + arm_w, arm_b), ImColor(55, 70, 40, 240), 3.0f);
+                            // luvas
+                            draw->AddRectFilled(ImVec2(cx - body_hw - arm_w, arm_b), ImVec2(cx - body_hw, arm_b + ch*0.04f), ImColor(30, 30, 30, 240), 2.0f);
+                            draw->AddRectFilled(ImVec2(cx + body_hw, arm_b), ImVec2(cx + body_hw + arm_w, arm_b + ch*0.04f), ImColor(30, 30, 30, 240), 2.0f);
+
+                            // pernas
+                            const float leg_t   = body_b;
+                            const float leg_b   = ct2 + ch * 0.94f;
+                            const float leg_hw  = ch * 0.065f;
+                            const float leg_gap = ch * 0.018f;
+                            draw->AddRectFilled(ImVec2(cx - leg_hw - leg_gap, leg_t), ImVec2(cx - leg_gap, leg_b), ImColor(40, 50, 30, 255), 3.0f);
+                            draw->AddRectFilled(ImVec2(cx + leg_gap, leg_t), ImVec2(cx + leg_hw + leg_gap, leg_b), ImColor(40, 50, 30, 255), 3.0f);
+                            // botas
+                            const float boot_b = ct2 + ch * 0.98f;
+                            draw->AddRectFilled(ImVec2(cx - leg_hw - leg_gap - 4, leg_b), ImVec2(cx - leg_gap + 6, boot_b), ImColor(25, 25, 25, 255), 2.0f);
+                            draw->AddRectFilled(ImVec2(cx + leg_gap - 6, leg_b), ImVec2(cx + leg_hw + leg_gap + 4, boot_b), ImColor(25, 25, 25, 255), 2.0f);
+                        }
+
+                        // aim height indicator
+                        {
+                            const float img_top    = pos.y + 85.0f;
+                            const float img_bottom = pos.y + 85.0f + 480.0f;
+                            const float img_left   = pos.x + 60.0f;
+                            const float img_right  = pos.x + 240.0f;
                             const float aim_y = img_top + (1.0f - var::aim_height / 100.0f) * (img_bottom - img_top);
 
-                            draw->AddLine(ImVec2(img_left, aim_y), ImVec2(img_right, aim_y), ImColor(255, 50, 50, 180), 1.5f);
+                            draw->AddLine(ImVec2(img_left, aim_y), ImVec2(img_right, aim_y), ImColor(255, 50, 50, 200), 1.5f);
                             draw->AddTriangleFilled(
                                 ImVec2(img_left, aim_y),
                                 ImVec2(img_left + 10.0f, aim_y - 5.0f),
                                 ImVec2(img_left + 10.0f, aim_y + 5.0f),
-                                ImColor(255, 80, 80, 220));
+                                ImColor(255, 80, 80, 240));
 
                             const char* label =
                                 var::aim_height >= 90.f ? "Head" :
                                 var::aim_height >= 78.f ? "Neck" :
                                 var::aim_height >= 58.f ? "Chest" :
                                 var::aim_height >= 38.f ? "Stomach" : "Legs";
-                            draw->AddText(ImVec2(img_left + 14.0f, aim_y - 13.0f), ImColor(255, 120, 120, 220), label);
+                            draw->AddText(ImVec2(img_left + 14.0f, aim_y - 13.0f), ImColor(255, 120, 120, 240), label);
                         }
 
                         const ImVec2 preview_center = ImVec2(pos.x + 150.0f, pos.y + 330.0f);
