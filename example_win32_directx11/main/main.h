@@ -77,11 +77,12 @@ namespace var {
     inline bool  esp = true;
     inline int   scannFPS = 60;
     // --- Type 95 optimized defaults ---
-    inline float smooth = 18.0f;           // snap rápido para burst
-    inline float aim_height = 92.0f;       // cabeça (burst preciso)
+    inline float smooth = 10.0f;           // frac=2.8→cap 0.99 = snap instantaneo
+    inline float aim_height = 92.0f;
     inline int   key0 = 0;
     inline int   key4 = VK_INSERT;
     inline std::string detection_backend = "CPU";
+    inline std::string model_name = "loading...";
     inline bool  debug_console = false;
     inline bool  aim_active = false;
     inline bool  no_recoil = true;
@@ -99,7 +100,7 @@ namespace var {
     inline int   weapon_mode = 0;
     inline float fov_radius = 140.0f;     // FOV mais apertado para burst
     inline float confidence = 0.30f;
-    inline float sensitivity = 1.3f;      // ligeiramente mais rápido
+    inline float sensitivity = 2.0f;
     inline bool  natural_aim = true;      // movimento natural ligado
     inline bool  sticky_aim = true;       // mantém lock entre bursts
     inline float sticky_radius = 65.0f;

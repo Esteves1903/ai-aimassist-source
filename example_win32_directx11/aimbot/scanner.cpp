@@ -1,5 +1,6 @@
 #include "scanner.h"
 #include "main.h"
+#pragma warning(disable: 4459) // local param 'frame' hides global — expected
 
 void detector::draw_box(float conf, int left, int top, int right, int bottom, cv::Mat& frame, cv::Scalar color)
 {
@@ -11,14 +12,16 @@ void detector::draw_box(float conf, int left, int top, int right, int bottom, cv
 // scans for red enemy name tag above/near the YOLO box — returns centroid or (-1,-1)
 static cv::Point2f findNameTag(const cv::Mat& frame, const cv::Rect& box)
 {
-    const int sx = std::max(0, box.x - box.width / 4);
-    const int sy = std::max(0, box.y - box.height / 2);
-    const int sw = std::min(frame.cols - sx, box.width + box.width / 2);
-    const int sh = std::min(frame.rows - sy, box.height / 2 + box.height / 6);
-    if (sw <= 0 || sh <= 0) return cv::Point2f(-1.f, -1.f);
+    const int rx = (box.x - box.width / 4) < 0 ? 0 : (box.x - box.width / 4);
+    const int ry = (box.y - box.height / 2) < 0 ? 0 : (box.y - box.height / 2);
+    const int rw_raw = box.width + box.width / 2;
+    const int rh_raw = box.height / 2 + box.height / 6;
+    const int rw = (rx + rw_raw > frame.cols) ? (frame.cols - rx) : rw_raw;
+    const int rh = (ry + rh_raw > frame.rows) ? (frame.rows - ry) : rh_raw;
+    if (rw <= 0 || rh <= 0) return cv::Point2f(-1.f, -1.f);
 
     cv::Mat hsv;
-    cv::cvtColor(frame(cv::Rect(sx, sy, sw, sh)), hsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(frame(cv::Rect(rx, ry, rw, rh)), hsv, cv::COLOR_BGR2HSV);
 
     // red wraps around 0/180 in HSV — detect both halves
     cv::Mat m1, m2, mask;
@@ -29,8 +32,8 @@ static cv::Point2f findNameTag(const cv::Mat& frame, const cv::Rect& box)
     const cv::Moments mom = cv::moments(mask, true);
     if (mom.m00 < 12.0) return cv::Point2f(-1.f, -1.f);
 
-    return cv::Point2f(sx + (float)(mom.m10 / mom.m00),
-                       sy + (float)(mom.m01 / mom.m00));
+    return cv::Point2f(rx + (float)(mom.m10 / mom.m00),
+                       ry + (float)(mom.m01 / mom.m00));
 }
 
 // samples pixels above the box to detect team indicator color
@@ -106,7 +109,9 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
             cv::minMaxLoc(scores, nullptr, &max_score, nullptr, &class_id_point);
 
             if ((float)max_score < var::confidence) continue;
-            if (class_id_point.x != 0) continue; // person class only
+            // COCO model (84 cols): só classe 0 = person
+            // Modelos de jogo (≤10 cols, ex: CS:GO 8 cols): todas as classes são jogadores
+            if (data.cols > 10 && class_id_point.x != 0) continue;
 
             const float* row = data.ptr<float>(i);
             const int centerX = (int)row[0];
@@ -238,16 +243,24 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
         var::Height = box.height;
         var::Width  = box.width;
 
-        // color refinement: find red name tag and use it for precise head position
-        if (var::color_aim)
+        // se o modelo detetou uma cabeça diretamente (cthead=1, thead=3) — aponta ao centro
+        const int best_class = classes_ids[best_idx];
+        const bool is_head_box = (best_class == 1 || best_class == 3);
+        if (is_head_box)
         {
+            // box já é só a cabeça — apontar ao centro dela
+            var::boxY   = box.y + box.height / 4;
+            var::Height = box.height / 2;
+        }
+        else if (var::color_aim)
+        {
+            // refinamento por cor: encontrar name tag vermelho para posição exata da cabeça
             const cv::Point2f tag = findNameTag(frame, box);
             if (tag.x >= 0.f)
             {
-                // name tag centroid ≈ head level — override YOLO box position
                 var::boxX   = (int)(tag.x) - box.width / 2;
                 var::boxY   = (int)(tag.y);
-                var::Height = box.height / 5; // small height → aim stays near tag level
+                var::Height = box.height / 5;
             }
         }
 
@@ -316,7 +329,7 @@ void detector::setupOptimalBackend()
             return;
         }
     }
-    catch (const cv::Exception& e)
+    catch (const cv::Exception&)
     {
         // CUDA not available or failed, try OpenCL
     }

@@ -548,40 +548,42 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                         ImGui::PushStyleColor(ImGuiCol_Button,  var::aim_toggle ? ImGui::GetColorU32(ImGuiCol_ButtonActive) : ImGui::GetColorU32(ImGuiCol_Button));
                         if (ImGui::Button("Toggle##am", ImVec2(108.0f * dpi_scale, 22.0f * dpi_scale))) var::aim_toggle = true;
                         ImGui::PopStyleColor();
-                        // --- Tracking ---
-                        ImGui::SliderFloat("Sensitivity",   &var::sensitivity,       0.1f, 3.0f,  "%.2fx", 0);
-                        ImGui::SliderFloat("Smoothness",    &var::smooth,            5.0f, 100.0f,"%.1f",  0);
-                        ImGui::SliderFloat("Aim Smoothing", &var::smoothing_factor,  0.01f,0.99f, "%.2f",  0);
+
+                        ImGui::Separator();
+                        ImGui::SliderFloat("Sensitivity",   &var::sensitivity,       0.1f, 5.0f,  "%.2fx", 0);
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                            ImGui::SetTooltip("Mais alto = mais rapido. >=2.0 com Smooth<=15 = snap instantaneo");
+                        ImGui::SliderFloat("Smoothness",    &var::smooth,            1.0f, 100.0f,"%.1f",  0);
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                            ImGui::SetTooltip("Mais baixo = mais rapido. 1-15 = snap, 30-60 = suave, 60+ = humano");
                         ImGui::Checkbox("Natural Movement", &var::natural_aim);
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                            ImGui::SetTooltip("Micro-variation sinusoidal — aim looks like mechanical skill");
+                            ImGui::SetTooltip("Micro-variacao sinusoidal — parece movimento humano");
                         ImGui::Checkbox("Sticky Aim", &var::sticky_aim);
                         if (var::sticky_aim)
                             ImGui::SliderFloat("Sticky Radius", &var::sticky_radius, 20.0f, 200.0f, "%.0f px", 0);
+                        ImGui::SliderFloat("Aim Height",    &var::aim_height,        1.0f, 100.0f,"%.0f%%", 0);
 
-                        // --- Aim ---
-                        ImGui::SliderFloat("Aim height",    &var::aim_height,        1.0f, 100.0f,"%.0f%%", 0);
-                        ImGui::SliderInt("Scan FPS",        &var::scannFPS,          1,    250,   "%d FPS",  0);
-
-                        // --- Detection ---
+                        ImGui::Separator();
                         ImGui::SliderFloat("FOV Radius",    &var::fov_radius,        50.0f,500.0f,"%.0f px", 0);
                         ImGui::SliderFloat("Confidence",    &var::confidence,        0.05f,0.80f, "%.2f",    0);
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                            ImGui::SetTooltip("Lower = detects more (may add false positives). Higher = only high-certainty targets.");
-
-                        // --- Visuals ---
+                            ImGui::SetTooltip("Mais baixo = deteta mais (mais falsos positivos). Mais alto = so alvos seguros.");
+                        ImGui::SliderInt("Scan FPS",        &var::scannFPS,          1,    250,   "%d FPS",  0);
                         ImGui::Checkbox("Color Aim",        &var::color_aim);
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                            ImGui::SetTooltip("Afina a posicao da cabeca usando o name tag vermelho do inimigo");
-                        ImGui::Checkbox("Show detections",  &var::esp);
+                            ImGui::SetTooltip("Afina cabeca via name tag vermelho / head class do modelo");
+                        ImGui::Checkbox("Show ESP",         &var::esp);
                         ImGui::Checkbox("Show FOV",         &var::fovCircle);
                         ImGui::Checkbox("Show Radar",       &var::radar);
-                        ImGui::Checkbox("Anti-Spray", &var::no_recoil);
+
+                        ImGui::Separator();
+                        ImGui::Checkbox("Anti-Spray",       &var::no_recoil);
                         if (var::no_recoil)
                         {
                             ImGui::SliderInt("Fire Rate",     &var::fire_rate,       100, 1200, "%d RPM", 0);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                                ImGui::SetTooltip("RPM da arma dentro do burst (Type 95 ≈ 800)");
+                                ImGui::SetTooltip("RPM dentro do burst (Type 95 = 800)");
                             ImGui::SliderInt("Burst Size",    &var::burst_size,        0,   10, var::burst_size == 0 ? "Auto" : "%d shots", 0);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                                 ImGui::SetTooltip("Tiros por burst — 0 = full auto, 3 = Type 95");
@@ -590,17 +592,19 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                                 ImGui::SetTooltip("Compensacao vertical — aumenta ate os tiros nao subirem");
                             ImGui::SliderFloat("Spray X",     &var::recoil_x,        -4.0f, 4.0f, "%.2f", 0);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                                ImGui::SetTooltip("Desvio horizontal: negativo = esquerda, positivo = direita");
+                                ImGui::SetTooltip("Deriva horizontal: negativo = esquerda, positivo = direita");
                         }
-                        ImGui::Checkbox("Triggerbot", &var::triggerbot);
+
+                        ImGui::Separator();
+                        ImGui::Checkbox("Triggerbot",       &var::triggerbot);
                         if (var::triggerbot)
                         {
-                            ImGui::Keybind("Trigger Key", &var::trigger_key, true);
-                            ImGui::SliderFloat("Trigger FOV",   &var::trigger_fov,      1.0f, 30.0f,  "%.1f px", 0);
-                            ImGui::SliderInt("Trigger Delay", &var::trigger_delay_ms, 0,    500,    "%d ms",   0);
-                            ImGui::Checkbox("Anti-Spray", &var::anti_spray);
+                            ImGui::Keybind("Trigger Key",     &var::trigger_key, true);
+                            ImGui::SliderFloat("Trigger FOV", &var::trigger_fov,      1.0f, 30.0f, "%.1f px", 0);
+                            ImGui::SliderInt("Trigger Delay", &var::trigger_delay_ms, 0,    500,   "%d ms",   0);
+                            ImGui::Checkbox("Pause on LMB",  &var::anti_spray);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                                ImGui::SetTooltip("Pausa o aimbot quando seguras LMB manualmente");
+                                ImGui::SetTooltip("Pausa o triggerbot quando seguras LMB manualmente");
                         }
                     }
                     ImGui::EndChild();
@@ -700,13 +704,17 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                     ImGui::BeginChildPos("Misc", ImVec2(620.0f * dpi_scale, 490.0f * dpi_scale));
                     {
                         ImGui::SetWindowFontScale(dpi_scale);
-                        ImGui::Checkbox("Render animated background", &animated_background);
+                        ImGui::Checkbox("Animated background", &animated_background);
                         ImGui::Keybind("Hide menu", &var::key4, true);
-                        
+
                         ImGui::Spacing();
                         ImGui::Separator();
                         ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 0.8f), "Detection: %s", var::detection_backend.c_str());
+                        ImGui::TextColored(ImVec4(0.4f, 0.8f, 0.4f, 1.0f), "Model:    %s", var::model_name.c_str());
+                        ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "Backend:  %s", var::detection_backend.c_str());
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 0.7f), "Insert = show/hide menu");
+                        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 0.7f), "End    = exit");
                     }
                     ImGui::EndChild();
                 }
