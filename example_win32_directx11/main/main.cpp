@@ -565,11 +565,14 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
                         // --- Detection ---
                         ImGui::SliderFloat("FOV Radius",    &var::fov_radius,        50.0f,500.0f,"%.0f px", 0);
-                        ImGui::SliderFloat("Confidence",    &var::confidence,        0.01f,0.20f, "%.2f",    0);
+                        ImGui::SliderFloat("Confidence",    &var::confidence,        0.05f,0.80f, "%.2f",    0);
                         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                             ImGui::SetTooltip("Lower = detects more (may add false positives). Higher = only high-certainty targets.");
 
                         // --- Visuals ---
+                        ImGui::Checkbox("Color Aim",        &var::color_aim);
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                            ImGui::SetTooltip("Afina a posicao da cabeca usando o name tag vermelho do inimigo");
                         ImGui::Checkbox("Show detections",  &var::esp);
                         ImGui::Checkbox("Show FOV",         &var::fovCircle);
                         ImGui::Checkbox("Show Radar",       &var::radar);

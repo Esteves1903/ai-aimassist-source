@@ -41,6 +41,12 @@ screenshot::~screenshot() {
 }
 
 cv::Mat& screenshot::get() {
+	// recompute capture position every frame — handles 4:3 fullscreen resolution changes
+	const int sw = GetSystemMetrics(SM_CXSCREEN);
+	const int sh = GetSystemMetrics(SM_CYSCREEN);
+	m_left = sw / 2 - ACTIVATION_RANGE / 2;
+	m_top  = sh / 2 - ACTIVATION_RANGE / 2;
+
 	BitBlt(m_hScreen, 0, 0, m_width, m_height, m_hWDC, m_left, m_top, SRCCOPY);
 	GetDIBits(m_hScreen, m_hBitmap, 0, m_height, m_data, &m_bitmapinfo, DIB_RGB_COLORS);
 	return *m_screen;

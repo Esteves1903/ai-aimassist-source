@@ -14,7 +14,7 @@ inline cv::Mat frame;
 
 class detector {
 public:
-	detector(std::string dataset_labels_path, std::string yolo_config_path, std::string yolo_weights_path);
+	detector(std::string dataset_labels_path, std::string onnx_path);
 	~detector() { };
 	void start(cv::Mat& image);
 	std::string getBackendName() const { return m_backend_name; }

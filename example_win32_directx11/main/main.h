@@ -64,46 +64,48 @@ namespace var {
     inline float kp = 0.2, ki = 0.005, kd = 0.02;
     inline bool RTrigger;
     inline bool LTrigger ;
-    inline float smoothing_factor = 0.05;
+    inline float smoothing_factor = 0.05f;
     inline float x_smooth = 0, y_smooth = 0;
-   inline int iteration = 0;
-  inline float jitter_factor = 1;
-   inline int boxY;
-   inline int boxX;
-   inline int Width;
-   inline int Height;
-    inline bool fovCircle = false;
-    inline bool checkbox = true;
-    inline bool esp = false;
-    inline int scannFPS = 60;
-    inline float smooth = 30.0f;
-    inline float aim_height = 88.0f;
-    inline int key0 = 0;
-    inline int key4 = VK_INSERT;
+    inline int   iteration = 0;
+    inline float jitter_factor = 1;
+    inline int   boxY;
+    inline int   boxX;
+    inline int   Width;
+    inline int   Height;
+    inline bool  fovCircle = true;
+    inline bool  checkbox = true;
+    inline bool  esp = true;
+    inline int   scannFPS = 60;
+    // --- Type 95 optimized defaults ---
+    inline float smooth = 18.0f;           // snap rápido para burst
+    inline float aim_height = 92.0f;       // cabeça (burst preciso)
+    inline int   key0 = 0;
+    inline int   key4 = VK_INSERT;
     inline std::string detection_backend = "CPU";
-    inline bool debug_console = false;
-    inline bool aim_active = false;
-    inline bool no_recoil = false;
-    inline float recoil_strength = 2.5f;
+    inline bool  debug_console = false;
+    inline bool  aim_active = false;
+    inline bool  no_recoil = true;         // ligado por defeito
+    inline float recoil_strength = 1.5f;  // Type 95 tem recoil baixo (burst)
     inline float recoil_x = 0.0f;
-    inline bool triggerbot = false;
+    inline bool  triggerbot = false;
     inline float trigger_fov = 8.0f;
-    inline int  trigger_key = VK_RBUTTON;
-    inline int  trigger_delay_ms = 0;
-    inline bool anti_spray = true;
-    inline bool triggerbot_firing = false;
-    inline bool aim_toggle = false;
-    inline int  weapon_mode = 0;            // 0 = Rifle, 1 = Sniper
-    inline float fov_radius = 187.0f;
-    inline float confidence = 0.06f;
-    inline float sensitivity = 1.0f;
-    inline bool  natural_aim = false;
-    inline bool  sticky_aim = false;
-    inline float sticky_radius = 80.0f;
+    inline int   trigger_key = VK_RBUTTON;
+    inline int   trigger_delay_ms = 0;
+    inline bool  anti_spray = true;
+    inline bool  triggerbot_firing = false;
+    inline bool  aim_toggle = false;       // Hold mode
+    inline int   weapon_mode = 0;
+    inline float fov_radius = 140.0f;     // FOV mais apertado para burst
+    inline float confidence = 0.30f;
+    inline float sensitivity = 1.3f;      // ligeiramente mais rápido
+    inline bool  natural_aim = true;      // movimento natural ligado
+    inline bool  sticky_aim = true;       // mantém lock entre bursts
+    inline float sticky_radius = 65.0f;
     inline int screen_box_x = 0, screen_box_y = 0, screen_box_w = 0, screen_box_h = 0;
     struct EspBox { int x, y, w, h; };
     inline EspBox esp_boxes[32];
     inline int esp_box_count = 0;
+    inline bool color_aim = true;
     inline bool radar = false;
     struct RadarDot { float dx, dy; };  // offset from frame center in YOLO pixels
     inline RadarDot radar_enemies[32];

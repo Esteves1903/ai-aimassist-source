@@ -23,8 +23,7 @@ static DWORD WINAPI RunningThread(LPVOID)
 
     detector detect(
         str_exe_path + "\\" + LABELS_FILE_NAME,
-        str_exe_path + "\\" + YOLO_CFG_FILE_NAME,
-        str_exe_path + "\\" + YOLO_WEIGHTS_FILE_NAME
+        str_exe_path + "\\" + YOLO_ONNX_FILE_NAME
     );
 
     var::detection_backend = detect.getBackendName();

@@ -8,6 +8,31 @@ void detector::draw_box(float conf, int left, int top, int right, int bottom, cv
     cv::putText(frame, label, cv::Point(left, top), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255));
 }
 
+// scans for red enemy name tag above/near the YOLO box — returns centroid or (-1,-1)
+static cv::Point2f findNameTag(const cv::Mat& frame, const cv::Rect& box)
+{
+    const int sx = std::max(0, box.x - box.width / 4);
+    const int sy = std::max(0, box.y - box.height / 2);
+    const int sw = std::min(frame.cols - sx, box.width + box.width / 2);
+    const int sh = std::min(frame.rows - sy, box.height / 2 + box.height / 6);
+    if (sw <= 0 || sh <= 0) return cv::Point2f(-1.f, -1.f);
+
+    cv::Mat hsv;
+    cv::cvtColor(frame(cv::Rect(sx, sy, sw, sh)), hsv, cv::COLOR_BGR2HSV);
+
+    // red wraps around 0/180 in HSV — detect both halves
+    cv::Mat m1, m2, mask;
+    cv::inRange(hsv, cv::Scalar(0,   180, 150), cv::Scalar(8,   255, 255), m1);
+    cv::inRange(hsv, cv::Scalar(172, 180, 150), cv::Scalar(180, 255, 255), m2);
+    cv::bitwise_or(m1, m2, mask);
+
+    const cv::Moments mom = cv::moments(mask, true);
+    if (mom.m00 < 12.0) return cv::Point2f(-1.f, -1.f);
+
+    return cv::Point2f(sx + (float)(mom.m10 / mom.m00),
+                       sy + (float)(mom.m01 / mom.m00));
+}
+
 // samples pixels above the box to detect team indicator color
 static bool isEnemy(const cv::Mat& frame, const cv::Rect& box)
 {
@@ -60,48 +85,48 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
     std::vector<float> confidences;
     std::vector<cv::Rect> boxes;
 
-    for (size_t i = 0; i < outs.size(); ++i)
+    // YOLOv8 ONNX output: [1, 84, num_anchors]
+    // 84 = [cx, cy, w, h] in pixel space (0..ACTIVATION_RANGE) + 80 class scores
+    // No separate objectness — max class score IS the confidence
+    if (!outs.empty() && outs[0].dims == 3)
     {
-        float* data = reinterpret_cast<float*>(outs[i].data);
-        for (int j = 0; j < outs[i].rows; ++j, data += outs[i].cols)
+        const int num_channels = outs[0].size[1]; // 84
+        const int num_anchors  = outs[0].size[2];
+
+        // Create [num_channels, num_anchors] view, transpose to [num_anchors, num_channels]
+        cv::Mat raw(num_channels, num_anchors, CV_32F, (void*)outs[0].ptr<float>());
+        cv::Mat data;
+        cv::transpose(raw, data);
+
+        for (int i = 0; i < data.rows; i++)
         {
-            float objectness = data[4];
-            if (objectness < var::confidence) continue;
-
-            const cv::Mat scores = outs[i].row(j).colRange(5, outs[i].cols);
+            const cv::Mat scores = data.row(i).colRange(4, data.cols);
             cv::Point class_id_point;
-            double max_class_score;
-            cv::minMaxLoc(scores, nullptr, &max_class_score, nullptr, &class_id_point);
-            
-            float confidence = objectness * (float)max_class_score;
+            double max_score;
+            cv::minMaxLoc(scores, nullptr, &max_score, nullptr, &class_id_point);
 
-            if (confidence > var::confidence)
-            {
-                // class 0 = person in COCO — reject all non-person detections
-                if (class_id_point.x != 0) continue;
+            if ((float)max_score < var::confidence) continue;
+            if (class_id_point.x != 0) continue; // person class only
 
-                const int centerX = static_cast<int>(data[0] * frame.cols);
-                const int centerY = static_cast<int>(data[1] * frame.rows);
-                const int width   = static_cast<int>(data[2] * frame.cols);
-                const int height  = static_cast<int>(data[3] * frame.rows);
+            const float* row = data.ptr<float>(i);
+            const int centerX = (int)row[0];
+            const int centerY = (int)row[1];
+            const int width   = (int)row[2];
+            const int height  = (int)row[3];
 
-                // reject boxes too small to be a real player
-                if (height < 20) continue;
+            if (height < 20) continue;
+            if (height < width * 0.55f) continue;
+            if (centerY + height / 2 < (int)(frame.rows * 0.20f)) continue;
+            // reject boxes too large to be a real player (>55% of frame = wall/floor/sky)
+            if (width > frame.cols * 0.55f) continue;
+            if (height > frame.rows * 0.90f) continue;
 
-                // reject wide flat boxes — walls/floors, not people
-                if (height < width * 0.55f) continue;
+            const int left = centerX - width / 2;
+            const int top  = centerY - height / 2;
 
-                // reject detections entirely in the top of the frame (sky/ceiling)
-                // bottom of box must be below top 20% of frame
-                if (centerY + height / 2 < (int)(frame.rows * 0.20f)) continue;
-
-                const int left = centerX - width / 2;
-                const int top  = centerY - height / 2;
-
-                classes_ids.push_back(class_id_point.x);
-                confidences.push_back(confidence);
-                boxes.push_back(cv::Rect(left, top, width, height));
-            }
+            classes_ids.push_back(class_id_point.x);
+            confidences.push_back((float)max_score);
+            boxes.push_back(cv::Rect(left, top, width, height));
         }
     }
 
@@ -118,8 +143,8 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
     int locked_idx = -1;
     float locked_dist = FLT_MAX;
 
-    static const int scr_w = GetSystemMetrics(SM_CXSCREEN);
-    static const int scr_h = GetSystemMetrics(SM_CYSCREEN);
+    const int scr_w = GetSystemMetrics(SM_CXSCREEN);
+    const int scr_h = GetSystemMetrics(SM_CYSCREEN);
     const float esp_scale = (float)ACTIVATION_RANGE / (float)m_activation_range;
     var::radar_enemy_count = 0;
     var::esp_box_count = 0;
@@ -201,10 +226,23 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
     if (best_idx >= 0)
     {
         const cv::Rect& box = boxes[best_idx];
-        var::boxX = box.x;
-        var::boxY = box.y;
+        var::boxX   = box.x;
+        var::boxY   = box.y;
         var::Height = box.height;
-        var::Width = box.width;
+        var::Width  = box.width;
+
+        // color refinement: find red name tag and use it for precise head position
+        if (var::color_aim)
+        {
+            const cv::Point2f tag = findNameTag(frame, box);
+            if (tag.x >= 0.f)
+            {
+                // name tag centroid ≈ head level — override YOLO box position
+                var::boxX   = (int)(tag.x) - box.width / 2;
+                var::boxY   = (int)(tag.y);
+                var::Height = box.height / 5; // small height → aim stays near tag level
+            }
+        }
 
         var::screen_box_x = (int)((scr_w - ACTIVATION_RANGE) / 2.0f + box.x * esp_scale);
         var::screen_box_y = (int)((scr_h - ACTIVATION_RANGE) / 2.0f + box.y * esp_scale);
@@ -321,27 +359,22 @@ void detector::setupOptimalBackend()
     std::cout << "[Detector] Using CPU backend (fallback mode)" << std::endl;
 }
 
-detector::detector(std::string dataset_labels_path, std::string yolo_config_path, std::string yolo_weights_path)
+detector::detector(std::string dataset_labels_path, std::string onnx_path)
 {
-    std::string line;
     std::ifstream file_labels(dataset_labels_path);
-
-    m_activation_range = 125;
-
+    std::string line;
     while (std::getline(file_labels, line))
         m_classes.push_back(line);
 
-    m_net = cv::dnn::readNetFromDarknet(yolo_config_path, yolo_weights_path);
+    m_net = cv::dnn::readNetFromONNX(onnx_path);
     if (m_net.empty())
     {
-        MessageBoxA(NULL, "Failed to load YOLO model! Check file paths.", "Error", MB_ICONERROR);
+        MessageBoxA(NULL, "Failed to load YOLOv8 model!\nPlace yolov8n.onnx in the same folder as the exe.", "Error", MB_ICONERROR);
         exit(1);
     }
-    
+
     if (var::debug_console)
-    {
-        std::cout << "[Scanner] Model loaded successfully!" << std::endl;
-    }
+        std::cout << "[Scanner] YOLOv8 model loaded!" << std::endl;
 
     m_activation_range = ACTIVATION_RANGE;
     setupOptimalBackend();

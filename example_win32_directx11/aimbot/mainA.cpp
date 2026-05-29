@@ -90,8 +90,8 @@ void aimbot::no_recoil()
 
 void aimbot::aim_to(int x, int y, int box_w, int box_h)
 {
-    static const int screen_width  = GetSystemMetrics(SM_CXSCREEN);
-    static const int screen_height = GetSystemMetrics(SM_CYSCREEN);
+    const int screen_width  = GetSystemMetrics(SM_CXSCREEN);
+    const int screen_height = GetSystemMetrics(SM_CYSCREEN);
 
     x = screen_width  / 2 - ACTIVATION_RANGE / 2 + x + box_w / 2;
     y = screen_height / 2 - ACTIVATION_RANGE / 2 + y + (int)(box_h * (1.0f - var::aim_height / 100.0f));
