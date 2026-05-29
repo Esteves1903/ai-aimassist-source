@@ -114,12 +114,19 @@ void detector::postprocess(cv::Mat& frame, const std::vector<cv::Mat>& outs)
             const int width   = (int)row[2];
             const int height  = (int)row[3];
 
-            if (height < 20) continue;
+            // tamanho minimo
+            if (width < 10 || height < 22) continue;
+            // caixas demasiado largas = paredes/chao
             if (height < width * 0.55f) continue;
-            if (centerY + height / 2 < (int)(frame.rows * 0.20f)) continue;
-            // reject boxes too large to be a real player (>55% of frame = wall/floor/sky)
+            // postes/arvores: muito estreitos e altos
+            if (height > width * 7) continue;
+            // caixas demasiado grandes = nao e jogador
             if (width > frame.cols * 0.55f) continue;
-            if (height > frame.rows * 0.90f) continue;
+            if (height > frame.rows * 0.85f) continue;
+            // ceu/teto: caixa inteiramente no topo 20%
+            if (centerY + height / 2 < (int)(frame.rows * 0.20f)) continue;
+            // arma/maos do proprio jogador: caixa no fundo 15% do frame
+            if (centerY - height / 2 > (int)(frame.rows * 0.85f)) continue;
 
             const int left = centerX - width / 2;
             const int top  = centerY - height / 2;

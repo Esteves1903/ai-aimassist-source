@@ -47,39 +47,52 @@ void aimbot::no_recoil()
 
     const bool lmb = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 
-    static double acc_y   = 0.0;
-    static double acc_x   = 0.0;
-    static DWORD  fire_t  = 0;
-    static bool   was_lmb = false;
+    static bool   was_lmb     = false;
+    static DWORD  fire_start  = 0;
+    static int    last_shot_n = -1;
+    static double acc_x       = 0.0;
+    static double acc_y       = 0.0;
 
     if (!lmb)
     {
-        acc_y = acc_x = 0.0;
-        was_lmb = false;
+        was_lmb     = false;
+        last_shot_n = -1;
+        acc_x = acc_y = 0.0;
         return;
     }
 
+    const DWORD now = GetTickCount();
+
     if (!was_lmb)
     {
-        fire_t  = GetTickCount();
-        was_lmb = true;
+        fire_start  = now;
+        last_shot_n = -1;
+        was_lmb     = true;
+        acc_x = acc_y = 0.0;
+        return; // primeiro frame = primeiro tiro, sem recoil ainda
     }
 
-    const DWORD elapsed = GetTickCount() - fire_t;
+    const double shot_ms    = 60000.0 / (var::fire_rate > 1 ? (double)var::fire_rate : 1.0);
+    const int    total_shot = (int)((now - fire_start) / shot_ms);
 
-    // primeiro tiro nao tem recoil — ignora primeiros 60ms
-    if (elapsed < 60) return;
+    // já compensámos este tiro
+    if (total_shot == last_shot_n) return;
+    last_shot_n = total_shot;
 
-    // recoil sobe gradualmente nos primeiros ~300ms depois estabiliza
-    const double t    = (double)(elapsed - 60) / 300.0;
-    const double ramp = t < 1.0 ? (0.5 + 0.5 * t) : 1.0;
+    // posição dentro do burst (0 = primeiro tiro = sem recoil)
+    const int burst      = var::burst_size > 0 ? var::burst_size : 999;
+    const int in_burst   = total_shot % burst;
 
-    acc_y += var::recoil_strength * ramp;
-    acc_x += var::recoil_x        * ramp;
+    if (in_burst == 0) return; // primeiro tiro de cada burst — sem recoil
+
+    // recoil escala por posição no burst: tiro 2 = 1.0x, tiro 3 = 1.4x, etc.
+    const double scale = 1.0 + (in_burst - 1) * 0.40;
+
+    acc_y += var::recoil_strength * scale;
+    acc_x += var::recoil_x        * scale;
 
     const int move_y = static_cast<int>(acc_y);
     const int move_x = static_cast<int>(acc_x);
-
     if (move_y != 0 || move_x != 0)
     {
         mouse.move(move_x, move_y);

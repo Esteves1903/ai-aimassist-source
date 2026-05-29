@@ -84,9 +84,11 @@ namespace var {
     inline std::string detection_backend = "CPU";
     inline bool  debug_console = false;
     inline bool  aim_active = false;
-    inline bool  no_recoil = true;         // ligado por defeito
-    inline float recoil_strength = 1.5f;  // Type 95 tem recoil baixo (burst)
+    inline bool  no_recoil = true;
+    inline float recoil_strength = 1.5f;
     inline float recoil_x = 0.0f;
+    inline int   fire_rate  = 800;   // RPM dentro do burst (Type 95 ≈ 800)
+    inline int   burst_size = 3;     // tiros por burst (0 = full auto)
     inline bool  triggerbot = false;
     inline float trigger_fov = 8.0f;
     inline int   trigger_key = VK_RBUTTON;

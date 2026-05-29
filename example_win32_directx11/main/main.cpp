@@ -576,13 +576,19 @@ int APIENTRY WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
                         ImGui::Checkbox("Show detections",  &var::esp);
                         ImGui::Checkbox("Show FOV",         &var::fovCircle);
                         ImGui::Checkbox("Show Radar",       &var::radar);
-                        ImGui::Checkbox("No Recoil", &var::no_recoil);
+                        ImGui::Checkbox("Anti-Spray", &var::no_recoil);
                         if (var::no_recoil)
                         {
-                            ImGui::SliderFloat("Recoil Strength", &var::recoil_strength, 0.5f, 10.0f, "%.1f", 0);
+                            ImGui::SliderInt("Fire Rate",     &var::fire_rate,       100, 1200, "%d RPM", 0);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                                ImGui::SetTooltip("Compensacao vertical — aumenta ate os tiros subirem");
-                            ImGui::SliderFloat("Recoil X",        &var::recoil_x,        -5.0f,  5.0f, "%.2f", 0);
+                                ImGui::SetTooltip("RPM da arma dentro do burst (Type 95 ≈ 800)");
+                            ImGui::SliderInt("Burst Size",    &var::burst_size,        0,   10, var::burst_size == 0 ? "Auto" : "%d shots", 0);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                                ImGui::SetTooltip("Tiros por burst — 0 = full auto, 3 = Type 95");
+                            ImGui::SliderFloat("Spray Y",     &var::recoil_strength, 0.5f, 8.0f, "%.1f", 0);
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+                                ImGui::SetTooltip("Compensacao vertical — aumenta ate os tiros nao subirem");
+                            ImGui::SliderFloat("Spray X",     &var::recoil_x,        -4.0f, 4.0f, "%.2f", 0);
                             if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                                 ImGui::SetTooltip("Desvio horizontal: negativo = esquerda, positivo = direita");
                         }
